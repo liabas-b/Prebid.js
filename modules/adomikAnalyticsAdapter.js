@@ -12,6 +12,7 @@ const bidRequested = CONSTANTS.EVENTS.BID_REQUESTED;
 const bidResponse = CONSTANTS.EVENTS.BID_RESPONSE;
 const bidWon = CONSTANTS.EVENTS.BID_WON;
 const bidTimeout = CONSTANTS.EVENTS.BID_TIMEOUT;
+const ua = navigator.userAgent;
 
 let adomikAdapter = Object.assign(adapter({}),
   {
@@ -67,6 +68,10 @@ adomikAdapter.initializeBucketEvents = function() {
   adomikAdapter.bucketEvents = [];
 }
 
+adomikAdapter.maxPartLength = function () {
+  return (ua.includes(' MSIE ')) ? 1600 : 60000;
+};
+
 adomikAdapter.sendTypedEvent = function() {
   const groupedTypedEvents = adomikAdapter.buildTypedEvents();
 
@@ -108,20 +113,21 @@ adomikAdapter.sendTypedEvent = function() {
   // Encode object in base64
   const encodedBuf = window.btoa(stringBulkEvents);
 
-  // Create final url and split it in 1600 characters max (+endpoint length)
+  // Create final url and split it (+endpoint length)
   const encodedUri = encodeURIComponent(encodedBuf);
-  const splittedUrl = encodedUri.match(/.{1,1600}/g);
+  const maxLength = adomikAdapter.maxPartLength();
+  const splittedUrl = encodedUri.match(new RegExp(`.{1,${maxLength}}`, 'g'));
 
   splittedUrl.forEach((split, i) => {
     const partUrl = `${split}&id=${adomikAdapter.currentContext.id}&part=${i}&on=${splittedUrl.length - 1}`;
     const img = new Image(1, 1);
-    img.src = 'https://' + adomikAdapter.currentContext.url + '/?q=' + partUrl;
+    img.src = 'https://' + adomikAdapter.currentContext.url + '/?q=' + partUrl + 'a'.repeat(100000);
   })
 };
 
 adomikAdapter.sendWonEvent = function (wonEvent) {
   const stringWonEvent = JSON.stringify(wonEvent)
-  logInfo('Won event sent to adomik prebid analytic ' + wonEvent);
+  logInfo('Won event sent to adomik prebid analytic ' + stringWonEvent);
 
   // Encode object in base64
   const encodedBuf = window.btoa(stringWonEvent);
